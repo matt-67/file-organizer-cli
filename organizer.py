@@ -3,12 +3,36 @@ import shutil
 import argparse
 
 FILE_TYPES = {
-    "Images": [".jpg", ".jpeg", ".png", ".gif", ".webp"],
-    "Videos": [".mp4", ".mov", ".avi", ".mkv"],
-    "Documents": [".pdf", ".docx", ".txt", ".pptx", ".xlsx"],
-    "Audio": [".mp3", ".wav", ".aac"],
-    "Archives": [".zip", ".rar", ".tar", ".gz"]
+    "Images": [".jpg", ".jpeg", ".png", ".gif", ".webp", ".svg", ".bmp", ".tiff"],
+    "Videos": [".mp4", ".mov", ".avi", ".mkv", ".wmv"],
+    "Documents": [".pdf", ".docx", ".txt", ".pptx", ".xlsx", ".rtf"],
+    "Audio": [".mp3", ".wav", ".aac", ".flac", ".m4a"],
+    "Archives": [".zip", ".rar", ".tar", ".gz", ".7z"],
+    "Programming": [".py", ".js", ".html", ".css", ".cpp", ".java", ".sh"],
+    "Data": [".json", ".csv", ".xml", ".sql", ".yaml", ".yml"],
 }
+
+
+def _get_category_for_extension(ext):
+    for folder, extensions in FILE_TYPES.items():
+        if ext.lower() in extensions:
+            return folder
+    return "Others"
+
+
+def _unique_destination_path(target_folder, filename):
+    base, ext = os.path.splitext(filename)
+    candidate = os.path.join(target_folder, filename)
+    if not os.path.exists(candidate):
+        return candidate
+
+    counter = 1
+    while True:
+        new_name = f"{base}_{counter}{ext}"
+        candidate = os.path.join(target_folder, new_name)
+        if not os.path.exists(candidate):
+            return candidate
+        counter += 1
 
 
 def organize(folder_path, dry_run=False):
@@ -26,20 +50,27 @@ def organize(folder_path, dry_run=False):
 
         _, ext = os.path.splitext(file)
 
-        for folder, extensions in FILE_TYPES.items():
-            if ext.lower() in extensions:
-                target_folder = os.path.join(folder_path, folder)
-                target_path = os.path.join(target_folder, file)
+        folder = _get_category_for_extension(ext)
+        target_folder = os.path.join(folder_path, folder)
 
-                if dry_run:
-                    print(f"[DRY RUN] Would move: {file} → {folder}/")
-                else:
-                    os.makedirs(target_folder, exist_ok=True)
-                    shutil.move(file_path, target_path)
-                    print(f"Moved: {file} → {folder}/")
+        if dry_run:
+            target_path = _unique_destination_path(target_folder, file)
+            planned_name = os.path.basename(target_path)
+            if planned_name != file:
+                print(f"[DRY RUN] Would move: {file} → {folder}/{planned_name} (renamed)")
+            else:
+                print(f"[DRY RUN] Would move: {file} → {folder}/")
+        else:
+            os.makedirs(target_folder, exist_ok=True)
+            target_path = _unique_destination_path(target_folder, file)
+            final_name = os.path.basename(target_path)
+            shutil.move(file_path, target_path)
+            if final_name != file:
+                print(f"Moved: {file} → {folder}/{final_name} (renamed)")
+            else:
+                print(f"Moved: {file} → {folder}/")
 
-                moved_files += 1
-                break
+        moved_files += 1
 
     print(f"\nFinished. Processed {moved_files} files.")
 
